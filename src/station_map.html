@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江浙沪地区车站路线图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                        neutral: '#6b7280',
+                        'ticket-line': '#ef4444',
+                        'line-1': '#3b82f6', // 沪宁线 - 蓝色
+                        'line-2': '#ef4444', // 沪杭线 - 红色
+                        'line-3': '#10b981', // 宁杭线 - 绿色
+                        'line-4': '#f59e0b', // 沿海线 - 橙色
+                        'line-5': '#8b5cf6', // 沪昆线 - 紫色
+                        'line-6': '#ec4899', // 宁启线 - 粉色
+                        'line-7': '#6366f1', // 通苏嘉线 - 靛蓝色
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .map-container {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                overflow: auto; /* 地图溢出时可滚动 */
+            }
+            .station-label {
+                pointer-events: none;
+            }
+            .station-circle {
+                transition: all 0.2s ease;
+                z-index: 10;
+                position: relative;
+            }
+            .ticket-route {
+                stroke-width: 4;
+                z-index: 5;
+                transition: all 0.3s ease;
+            }
+            .selected-station {
+                transform: scale(1.5);
+                filter: brightness(1.3);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-map text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold">江浙沪地区车站路线图</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="ticket_manager.html" class="bg-white text-primary px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 flex items-center space-x-1">
+                    <i class="fa fa-ticket"></i>
+                    <span>管理车票</span>
+                </a>
+                <button id="reset-highlight" class="bg-white text-primary px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 flex items-center space-x-1">
+                    <i class="fa fa-refresh"></i>
+                    <span>重置高亮</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">江浙沪地区铁路路线图</h2>
+            <p class="text-gray-600 mb-4">
+                本地图展示了江浙沪地区主要火车站及其连接线路，点击车站可查看详情，点击车票路线可高亮显示。
+            </p>
+            <div class="flex flex-wrap gap-4 mb-4">
+                <!-- 图例 -->
+                <div class="flex items-center space-x-2">
+                    <span class="w-4 h-4 rounded-full bg-primary"></span>
+                    <span class="text-sm text-gray-700">主要车站</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-4 h-4 rounded-full bg-secondary"></span>
+                    <span class="text-sm text-gray-700">次要车站</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-4 h-4 rounded-full bg-accent"></span>
+                    <span class="text-sm text-gray-700">选中的车站</span>
+                </div>
+                <!-- 线路图例 -->
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-1"></div>
+                        <span class="text-sm text-gray-700">沪宁线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-2"></div>
+                        <span class="text-sm text-gray-700">沪杭线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-3"></div>
+                        <span class="text-sm text-gray-700">宁杭线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-4"></div>
+                        <span class="text-sm text-gray-700">沿海线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-5"></div>
+                        <span class="text-sm text-gray-700">沪昆线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-6"></div>
+                        <span class="text-sm text-gray-700">宁启线</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-0.5 bg-line-7"></div>
+                        <span class="text-sm text-gray-700">通苏嘉线</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地图容器 -->
+        <div class="map-container bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="font-medium text-gray-700">江浙沪地区铁路线路图</h3>
+                <div class="text-sm text-gray-500">
+                    车站总数: <span id="station-count">0</span> |
+                    线路总数: <span id="route-count">0</span>
+                </div>
+            </div>
+            <div class="relative">
+                <!-- SVG 地图 - 修复右侧溢出问题 -->
+                <svg id="train-map" width="100%" height="900" viewBox="0 0 1400 900" class="bg-white">
+                    <!-- 背景网格 -->
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f0f0f0" stroke-width="0.5"/>
+                    </pattern>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                </svg>
+
+                <!-- 信息卡片 -->
+                <div id="info-card" class="hidden absolute bg-white rounded-lg shadow-xl p-4 w-64 z-20 transition-all duration-300 transform scale-95 opacity-0">
+                    <h3 id="station-name" class="font-bold text-lg text-gray-800 mb-2"></h3>
+                    <div class="text-sm text-gray-600 mb-3">
+                        <p><span class="font-medium">城市:</span> <span id="station-city"></span></p>
+                        <p><span class="font-medium">等级:</span> <span id="station-level"></span></p>
+                        <p><span class="font-medium">所属线路:</span> <span id="station-lines"></span></p>
+                        <p><span class="font-medium">相关车票:</span> <span id="station-tickets"></span></p>
+                    </div>
+                    <button id="close-card" class="text-sm text-gray-500 hover:text-gray-700">
+                        <i class="fa fa-times"></i> 关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2025 江浙沪地区车站路线图系统</p>
+        </div>
+    </footer>
+
+    <script>
+        // 确保DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 江浙沪地区车站数据 - 调整右侧车站位置，修复溢出
+            const stations = [
+                // 沪宁线 (蓝色)
+                { id: 'NJ', name: '南京', city: '江苏', level: '特等站', x: 200, y: 400, type: 'primary', lines: ['line-1'] },
+                { id: 'ZJ', name: '镇江', city: '江苏', level: '一等站', x: 350, y: 400, type: 'secondary', lines: ['line-1'] },
+                { id: 'CZ', name: '常州', city: '江苏', level: '一等站', x: 500, y: 400, type: 'secondary', lines: ['line-1'] },
+                { id: 'WX', name: '无锡', city: '江苏', level: '一等站', x: 650, y: 400, type: 'secondary', lines: ['line-1'] },
+                { id: 'SZ', name: '苏州', city: '江苏', level: '一等站', x: 800, y: 400, type: 'secondary', lines: ['line-1', 'line-7'] },
+                { id: 'KS', name: '昆山', city: '江苏', level: '一等站', x: 900, y: 400, type: 'secondary', lines: ['line-1'] },
+                { id: 'SHH', name: '上海虹桥', city: '上海', level: '特等站', x: 1000, y: 400, type: 'primary', lines: ['line-1', 'line-2'] },
+                { id: 'SH', name: '上海', city: '上海', level: '特等站', x: 1100, y: 400, type: 'primary', lines: ['line-1', 'line-2', 'line-7'] },
+
+                // 沪杭线 (红色) - 调整右侧站点位置，避免超出边界
+                { id: 'SH', name: '上海', city: '上海', level: '特等站', x: 1100, y: 400, type: 'primary', lines: ['line-1', 'line-2', 'line-7'] },
+                { id: 'QJ', name: '嘉兴', city: '浙江', level: '一等站', x: 1200, y: 400, type: 'secondary', lines: ['line-2'] },
+                { id: 'JS', name: '嘉善', city: '浙江', level: '二等站', x: 1270, y: 400, type: 'secondary', lines: ['line-2'] },
+                { id: 'HZ', name: '杭州', city: '浙江', level: '特等站', x: 1350, y: 400, type: 'primary', lines: ['line-2', 'line-3', 'line-5'] },
+
+                // 宁杭线 (绿色)
+                { id: 'NJ', name: '南京', city: '江苏', level: '特等站', x: 200, y: 400, type: 'primary', lines: ['line-1'] },
+                { id: 'NJB', name: '南京南', city: '江苏', level: '特等站', x: 200, y: 550, type: 'primary', lines: ['line-3'] },
+                { id: 'HZ2', name: '湖州', city: '浙江', level: '二等站', x: 650, y: 550, type: 'secondary', lines: ['line-3'] },
+                { id: 'HZ', name: '杭州', city: '浙江', level: '特等站', x: 1350, y: 400, type: 'primary', lines: ['line-2', 'line-3', 'line-5'] },
+
+                // 沿海线 (橙色) - 调整右侧站点位置
+                { id: 'HZ', name: '杭州', city: '浙江', level: '特等站', x: 1350, y: 400, type: 'primary', lines: ['line-2', 'line-3', 'line-5'] },
+                { id: 'SX', name: '绍兴', city: '浙江', level: '一等站', x: 1350, y: 300, type: 'secondary', lines: ['line-4'] },
+                { id: 'NX', name: '宁波', city: '浙江', level: '一等站', x: 1350, y: 200, type: 'secondary', lines: ['line-4'] },
+
+                // 沪昆线 (紫色)
+                { id: 'HZ', name: '杭州', city: '浙江', level: '特等站', x: 1350, y: 400, type: 'primary', lines: ['line-2', 'line-3', 'line-5'] },
+                { id: 'JHS', name: '金华', city: '浙江', level: '一等站', x: 1350, y: 500, type: 'secondary', lines: ['line-5'] },
+
+                // 宁启线 (粉色)
+                { id: 'NJ', name: '南京', city: '江苏', level: '特等站', x: 200, y: 400, type: 'primary', lines: ['line-1'] },
+                { id: 'YZ', name: '扬州', city: '江苏', level: '一等站', x: 200, y: 250, type: 'secondary', lines: ['line-6'] },
+                { id: 'TA', name: '泰州', city: '江苏', level: '二等站', x: 350, y: 250, type: 'secondary', lines: ['line-6'] },
+                { id: 'NT', name: '南通', city: '江苏', level: '一等站', x: 500, y: 250, type: 'secondary', lines: ['line-6', 'line-7'] },
+
+                // 通苏嘉线 (靛蓝色)
+                { id: 'NT', name: '南通', city: '江苏', level: '一等站', x: 500, y: 250, type: 'secondary', lines: ['line-6', 'line-7'] },
+                { id: 'SZ', name: '苏州', city: '江苏', level: '一等站', x: 800, y: 400, type: 'secondary', lines: ['line-1', 'line-7'] },
+                { id: 'SH', name: '上海', city: '上海', level: '特等站', x: 1100, y: 400, type: 'primary', lines: ['line-1', 'line-2', 'line-7'] },
+
+                // 其他重要车站 - 调整右侧站点位置
+                { id: 'SHN', name: '上海南', city: '上海', level: '一等站', x: 1100, y: 550, type: 'secondary', lines: [] },
+                { id: 'TQ', name: '太仓', city: '江苏', level: '二等站', x: 900, y: 250, type: 'secondary', lines: [] },
+                { id: 'ZJ2', name: '张家港', city: '江苏', level: '二等站', x: 650, y: 250, type: 'secondary', lines: [] },
+                { id: 'YX', name: '宜兴', city: '江苏', level: '二等站', x: 500, y: 550, type: 'secondary', lines: [] },
+                { id: 'TY', name: '台州', city: '浙江', level: '一等站', x: 1350, y: 300, type: 'secondary', lines: [] },
+            ];
+
+            // 线路数据
+            const routes = [
+                // 沪宁线 (蓝色)
+                { from: 'NJ', to: 'ZJ', line: 'line-1', color: '#3b82f6' },
+                { from: 'ZJ', to: 'CZ', line: 'line-1', color: '#3b82f6' },
+                { from: 'CZ', to: 'WX', line: 'line-1', color: '#3b82f6' },
+                { from: 'WX', to: 'SZ', line: 'line-1', color: '#3b82f6' },
+                { from: 'SZ', to: 'KS', line: 'line-1', color: '#3b82f6' },
+                { from: 'KS', to: 'SHH', line: 'line-1', color: '#3b82f6' },
+                { from: 'SHH', to: 'SH', line: 'line-1', color: '#3b82f6' },
+
+                // 沪杭线 (红色)
+                { from: 'SH', to: 'QJ', line: 'line-2', color: '#ef4444' },
+                { from: 'QJ', to: 'JS', line: 'line-2', color: '#ef4444' },
+                { from: 'JS', to: 'HZ', line: 'line-2', color: '#ef4444' },
+
+                // 宁杭线 (绿色)
+                { from: 'NJ', to: 'NJB', line: 'line-3', color: '#10b981' },
+                { from: 'NJB', to: 'HZ2', line: 'line-3', color: '#10b981' },
+                { from: 'HZ2', to: 'HZ', line: 'line-3', color: '#10b981', curved: true },
+
+                // 沿海线 (橙色)
+                { from: 'HZ', to: 'SX', line: 'line-4', color: '#f59e0b' },
+                { from: 'SX', to: 'NX', line: 'line-4', color: '#f59e0b' },
+
+                // 沪昆线 (紫色)
+                { from: 'HZ', to: 'JHS', line: 'line-5', color: '#8b5cf6' },
+
+                // 宁启线 (粉色)
+                { from: 'NJ', to: 'YZ', line: 'line-6', color: '#ec4899' },
+                { from: 'YZ', to: 'TA', line: 'line-6', color: '#ec4899' },
+                { from: 'TA', to: 'NT', line: 'line-6', color: '#ec4899' },
+
+                // 通苏嘉线 (靛蓝色)
+                { from: 'NT', to: 'SZ', line: 'line-7', color: '#6366f1', curved: true },
+                { from: 'SZ', to: 'SH', line: 'line-7', color: '#6366f1' },
+
+                // 其他连接线
+                { from: 'SH', to: 'SHN', line: '', color: '#6b7280', dashed: true },
+                { from: 'SZ', to: 'TQ', line: '', color: '#6b7280', dashed: true },
+                { from: 'WX', to: 'ZJ2', line: '', color: '#6b7280', dashed: true },
+                { from: 'CZ', to: 'YX', line: '', color: '#6b7280', dashed: true },
+                { from: 'SX', to: 'TY', line: '', color: '#6b7280', dashed: true },
+            ];
+
+            // 获取地图元素
+            const svg = document.getElementById('train-map');
+            const stationCount = document.getElementById('station-count');
+            const routeCount = document.getElementById('route-count');
+            const infoCard = document.getElementById('info-card');
+            const closeCard = document.getElementById('close-card');
+
+            // 初始化统计数据
+            stationCount.textContent = stations.length;
+            routeCount.textContent = routes.length;
+
+            // 从localStorage加载车票数据
+            let tickets = [];
+            try {
+                const savedTickets = localStorage.getItem('tickets');
+                if (savedTickets) tickets = JSON.parse(savedTickets);
+            } catch (e) {
+                console.error('加载车票数据失败:', e);
+            }
+
+            // 检查URL参数，确定是否需要高亮特定车票路径
+            const urlParams = new URLSearchParams(window.location.search);
+            const highlightTicketId = urlParams.get('highlight');
+            let highlightedTicket = null;
+            if (highlightTicketId) {
+                highlightedTicket = tickets.find(t => t.id === highlightTicketId);
+            }
+
+            // 创建车站到车票的映射
+            const stationTicketsMap = {};
+            stations.forEach(station => {
+                stationTicketsMap[station.id] = tickets.filter(ticket =>
+                    ticket.departure === station.name || ticket.destination === station.name
+                );
+            });
+
+            // 添加线路到地图
+            function addRoutes() {
+                // 先添加普通线路
+                routes.forEach(route => {
+                    const fromStation = stations.find(s => s.id === route.from);
+                    const toStation = stations.find(s => s.id === route.to);
+
+                    if (!fromStation || !toStation) return;
+
+                    // 创建线路元素
+                    let path;
+
+                    // 处理弯曲线路
+                    if (route.curved) {
+                        path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+                        // 计算控制点，创建弯曲效果
+                        const controlPoint1 = {
+                            x: fromStation.x + (toStation.x - fromStation.x) / 3,
+                            y: fromStation.y + (toStation.y - fromStation.y) / 3
+                        };
+
+                        const controlPoint2 = {
+                            x: fromStation.x + 2 * (toStation.x - fromStation.x) / 3,
+                            y: fromStation.y + 2 * (toStation.y - fromStation.y) / 3
+                        };
+
+                        // 创建贝塞尔曲线
+                        const d = `M ${fromStation.x},${fromStation.y}
+                                   C ${controlPoint1.x},${controlPoint1.y}
+                                     ${controlPoint2.x},${controlPoint2.y}
+                                     ${toStation.x},${toStation.y}`;
+
+                        path.setAttribute('d', d);
+                    } else {
+                        // 直线线路
+                        path = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        path.setAttribute('x1', fromStation.x);
+                        path.setAttribute('y1', fromStation.y);
+                        path.setAttribute('x2', toStation.x);
+                        path.setAttribute('y2', toStation.y);
+                    }
+
+                    // 设置线路样式
+                    if (route.line) {
+                        // 主要线路
+                        path.setAttribute('stroke', route.color);
+                        path.setAttribute('stroke-width', '3');
+                    } else {
+                        // 次要线路
+                        path.setAttribute('stroke', route.color || '#6b7280');
+                        path.setAttribute('stroke-width', '2');
+                        if (route.dashed) {
+                            path.setAttribute('stroke-dasharray', '5,3');
+                        }
+                    }
+
+                    svg.appendChild(path);
+                });
+
+                // 再添加车票线路（使用曲线）
+                tickets.forEach(ticket => {
+                    const fromStation = stations.find(s => s.name === ticket.departure);
+                    const toStation = stations.find(s => s.name === ticket.destination);
+
+                    if (!fromStation || !toStation) return;
+
+                    // 创建曲线线路
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+                    // 计算控制点，创建弯曲效果
+                    const dx = toStation.x - fromStation.x;
+                    const dy = toStation.y - fromStation.y;
+
+                    // 控制点位置，使曲线向外弯曲
+                    const controlPoint1 = {
+                        x: fromStation.x + dx / 2 - dy / 4,
+                        y: fromStation.y + dy / 2 + dx / 4
+                    };
+
+                    const controlPoint2 = {
+                        x: fromStation.x + dx / 2 - dy / 4,
+                        y: fromStation.y + dy / 2 + dx / 4
+                    };
+
+                    // 创建贝塞尔曲线
+                    const d = `M ${fromStation.x},${fromStation.y}
+                               C ${controlPoint1.x},${controlPoint1.y}
+                                 ${controlPoint2.x},${controlPoint2.y}
+                                 ${toStation.x},${toStation.y}`;
+
+                    path.setAttribute('d', d);
+                    path.setAttribute('stroke', '#ef4444'); // 车票线路使用红色
+                    path.setAttribute('stroke-width', '4');
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke-opacity', '0.8');
+                    path.classList.add('ticket-route');
+
+                    // 保存车票信息
+                    path.setAttribute('data-ticket-id', ticket.id);
+                    path.setAttribute('data-departure', ticket.departure);
+                    path.setAttribute('data-destination', ticket.destination);
+
+                    // 添加点击事件
+                    path.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        showTicketInfo(this);
+                    });
+
+                    svg.appendChild(path);
+                });
+            }
+
+            // 显示车票信息
+            function showTicketInfo(path) {
+                const ticketId = path.getAttribute('data-ticket-id');
+                const ticket = tickets.find(t => t.id === ticketId);
+
+                if (ticket) {
+                    infoCard.querySelector('#station-name').textContent =
+                        `${ticket.departure} → ${ticket.destination}`;
+                    infoCard.querySelector('#station-city').textContent =
+                        `日期: ${ticket.date}`;
+                    infoCard.querySelector('#station-level').textContent =
+                        `车次: ${ticket.trainNumber}`;
+                    infoCard.querySelector('#station-lines').textContent =
+                        `座位: ${ticket.seatType} ${ticket.seatNumber}`;
+                    infoCard.querySelector('#station-tickets').textContent =
+                        `票价: ¥${ticket.price}`;
+
+                    // 定位信息卡片
+                    const svgRect = svg.getBoundingClientRect();
+                    const pathBBox = path.getBBox();
+                    const midX = pathBBox.x + pathBBox.width / 2;
+                    const midY = pathBBox.y + pathBBox.height / 2;
+
+                    positionInfoCard(midX + svgRect.left, midY + svgRect.top);
+                }
+            }
+
+            // 添加车站到地图
+            function addStations() {
+                // 使用Map去重处理重复车站
+                const uniqueStations = new Map();
+                stations.forEach(station => {
+                    if (!uniqueStations.has(station.id)) {
+                        uniqueStations.set(station.id, station);
+                    }
+                });
+
+                // 绘制车站
+                uniqueStations.forEach(station => {
+                    const hasTickets = stationTicketsMap[station.id]?.length > 0;
+
+                    // 创建车站标记
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', station.x);
+                    circle.setAttribute('cy', station.y);
+                    circle.setAttribute('stroke', '#fff');
+                    circle.setAttribute('stroke-width', '1.5');
+                    circle.classList.add('station-circle');
+
+                    // 设置车站样式
+                    if (station.type === 'primary') {
+                        circle.setAttribute('r', hasTickets ? '8' : '6');
+                        circle.setAttribute('fill', hasTickets ? '#f59e0b' : '#3b82f6');
+                    } else {
+                        circle.setAttribute('r', hasTickets ? '6' : '4');
+                        circle.setAttribute('fill', hasTickets ? '#f59e0b' : '#10b981');
+                    }
+
+                    // 保存原始半径
+                    circle.setAttribute('data-original-r', circle.getAttribute('r'));
+
+                    // 添加点击事件
+                    circle.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showStationInfo(station, circle);
+                    });
+
+                    svg.appendChild(circle);
+
+                    // 添加车站标签
+                    addStationLabel(station);
+                });
+            }
+
+            // 添加车站标签
+            function addStationLabel(station) {
+                // 计算标签位置，避免重叠
+                const labelOffset = 20;
+                let labelX = station.x;
+                let labelY = station.y - labelOffset;
+
+                // 检查是否与其他标签重叠
+                const existingLabels = document.querySelectorAll('.station-label text');
+                const isOverlapping = Array.from(existingLabels).some(label => {
+                    const x = parseFloat(label.getAttribute('x'));
+                    const y = parseFloat(label.getAttribute('y'));
+                    const distance = Math.hypot(labelX - x, labelY - y);
+                    return distance < 30;
+                });
+
+                // 如果重叠，调整位置
+                if (isOverlapping) {
+                    labelY = station.y + labelOffset + 10; // 放在下方
+                }
+
+                // 创建标签背景
+                const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                background.setAttribute('x', labelX - 15);
+                background.setAttribute('y', labelY - 12);
+                background.setAttribute('rx', '5');
+                background.setAttribute('ry', '5');
+                background.setAttribute('width', station.name.length * 12 + 30);
+                background.setAttribute('height', '24');
+                background.setAttribute('fill', 'rgba(255, 255, 255, 0.8)');
+                background.setAttribute('stroke', '#ddd');
+                background.classList.add('station-label');
+
+                // 创建标签文本
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', labelX);
+                text.setAttribute('y', labelY + 4);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('font-size', '14');
+                text.setAttribute('fill', '#333');
+                text.textContent = station.name;
+                text.classList.add('station-label');
+
+                svg.appendChild(background);
+                svg.appendChild(text);
+            }
+
+            // 显示车站信息
+            function showStationInfo(station, circle) {
+                // 移除其他选中状态
+                document.querySelectorAll('.selected-station').forEach(el => {
+                    el.classList.remove('selected-station');
+                    el.setAttribute('r', el.getAttribute('data-original-r'));
+                });
+
+                // 添加选中状态
+                circle.classList.add('selected-station');
+                const originalR = parseFloat(circle.getAttribute('data-original-r'));
+                circle.setAttribute('r', originalR * 1.5);
+
+                // 显示车站信息
+                infoCard.querySelector('#station-name').textContent = station.name;
+                infoCard.querySelector('#station-city').textContent = station.city;
+                infoCard.querySelector('#station-level').textContent = station.level;
+
+                // 显示所属线路
+                const lineNames = {
+                    'line-1': '沪宁线', 'line-2': '沪杭线', 'line-3': '宁杭线',
+                    'line-4': '沿海线', 'line-5': '沪昆线', 'line-6': '宁启线',
+                    'line-7': '通苏嘉线'
+                };
+                const linesText = station.lines.map(line => lineNames[line]).join('、');
+                infoCard.querySelector('#station-lines').textContent = linesText || '无';
+
+                // 显示相关车票
+                const ticketsText = stationTicketsMap[station.id]?.length ?
+                    stationTicketsMap[station.id].map(t => t.trainNumber).join('、') : '无';
+                infoCard.querySelector('#station-tickets').textContent = ticketsText;
+
+                // 定位信息卡片
+                const svgRect = svg.getBoundingClientRect();
+                positionInfoCard(station.x + svgRect.left, station.y + svgRect.top);
+            }
+
+            // 定位信息卡片，确保不超出屏幕
+            function positionInfoCard(x, y) {
+                const cardWidth = 256;
+                const cardHeight = 180;
+                const padding = 20;
+
+                // 计算卡片位置
+                let left = x - cardWidth / 2;
+                let top = y - cardHeight / 2;
+
+                // 边界检查
+                if (left < padding) left = padding;
+                if (top < padding) top = padding;
+                if (left + cardWidth > window.innerWidth - padding) {
+                    left = window.innerWidth - cardWidth - padding;
+                }
+                if (top + cardHeight > window.innerHeight - padding) {
+                    top = window.innerHeight - cardHeight - padding;
+                }
+
+                // 设置位置并显示
+                infoCard.style.left = `${left}px`;
+                infoCard.style.top = `${top}px`;
+                infoCard.classList.remove('hidden');
+                setTimeout(() => {
+                    infoCard.classList.remove('scale-95', 'opacity-0');
+                }, 10);
+            }
+
+            // 关闭信息卡片
+            function closeInfoCard() {
+                infoCard.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    infoCard.classList.add('hidden');
+                }, 300);
+
+                // 重置选中状态
+                document.querySelectorAll('.selected-station').forEach(el => {
+                    el.classList.remove('selected-station');
+                    el.setAttribute('r', el.getAttribute('data-original-r'));
+                });
+            }
+
+            // 重置高亮状态
+            function resetHighlight() {
+                closeInfoCard();
+            }
+
+            // 初始化
+            addRoutes();
+            addStations();
+
+            // 事件监听
+            closeCard.addEventListener('click', closeInfoCard);
+            svg.addEventListener('click', closeInfoCard);
+            document.getElementById('reset-highlight').addEventListener('click', resetHighlight);
+
+            // 高亮显示指定车票
+            if (highlightedTicket) {
+                const path = document.querySelector(`[data-ticket-id="${highlightedTicket.id}"]`);
+                if (path) showTicketInfo(path);
+            }
+        });
+    </script>
+</body>
+</html>
