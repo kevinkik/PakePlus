@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>车票管理 - 江浙沪地区车站路线图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                        neutral: '#6b7280',
+                        'ticket-line': '#ef4444',
+                        'line-1': '#3b82f6', // 沪宁线 - 蓝色
+                        'line-2': '#ef4444', // 沪杭线 - 红色
+                        'line-3': '#10b981', // 宁杭线 - 绿色
+                        'line-4': '#f59e0b', // 沿海线 - 橙色
+                        'line-5': '#8b5cf6', // 沪昆线 - 紫色
+                        'line-6': '#ec4899', // 宁启线 - 粉色
+                        'line-7': '#6366f1', // 通苏嘉线 - 靛蓝色
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .ticket-card {
+                transition: all 0.3s ease;
+            }
+            .ticket-card:hover {
+                transform: translateY(-5px);
+            }
+            .seat-type {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+            }
+            .btn-primary {
+                @apply bg-primary text-white px-4 py-2 rounded-lg font-medium transition-all hover:bg-primary/90;
+            }
+            .btn-danger {
+                @apply bg-red-500 text-white px-4 py-2 rounded-lg font-medium transition-all hover:bg-red-600;
+            }
+            .btn-outline {
+                @apply border border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-50;
+            }
+            .stats-card {
+                @apply bg-white rounded-xl shadow-md p-5 border border-gray-100;
+            }
+            .stat-value {
+                @apply text-3xl font-bold text-gray-900;
+            }
+            .stat-label {
+                @apply text-sm text-gray-500 mt-1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+    <!-- 导航栏 -->
+    <header class="bg-primary text-white shadow-md">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-ticket text-2xl"></i>
+                <h1 class="text-xl md:text-2xl font-bold">车票管理</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <a href="station_map.html" class="bg-white text-primary px-4 py-2 rounded-lg font-medium transition-all hover:bg-gray-100 flex items-center space-x-1">
+                    <i class="fa fa-map"></i>
+                    <span>返回地图</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <!-- 统计信息卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div class="stats-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div id="total-tickets" class="stat-value">0</div>
+                        <div class="stat-label">总车票数</div>
+                    </div>
+                    <div class="text-primary text-3xl">
+                        <i class="fa fa-ticket"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div id="total-expense" class="stat-value">¥0.00</div>
+                        <div class="stat-label">总消费</div>
+                    </div>
+                    <div class="text-accent text-3xl">
+                        <i class="fa fa-money"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-card">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <div id="most-frequent-route" class="stat-value">暂无数据</div>
+                        <div class="stat-label">最常乘坐路线</div>
+                    </div>
+                    <div class="text-secondary text-3xl">
+                        <i class="fa fa-road"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">我的车票</h2>
+            <p class="text-gray-600 mb-6">
+                管理您的车票信息，可以查看、添加和删除车票。点击车票可在地图上高亮显示路线。
+            </p>
+
+            <!-- 车票列表 -->
+            <div id="ticket-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 车票将通过JavaScript动态生成 -->
+            </div>
+
+            <!-- 无车票提示 -->
+            <div id="no-tickets" class="hidden text-center py-12">
+                <div class="text-gray-400 text-6xl mb-4">
+                    <i class="fa fa-ticket"></i>
+                </div>
+                <h3 class="text-xl font-medium text-gray-500 mb-2">暂无车票</h3>
+                <p class="text-gray-400">点击下方按钮添加新车票</p>
+            </div>
+        </div>
+
+        <!-- 添加车票表单 -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-6">添加新车票</h2>
+
+            <form id="add-ticket-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="departure" class="block text-sm font-medium text-gray-700 mb-1">出发站</label>
+                        <select id="departure" name="departure" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <!-- 车站选项将通过JavaScript动态生成 -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="destination" class="block text-sm font-medium text-gray-700 mb-1">到达站</label>
+                        <select id="destination" name="destination" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <!-- 车站选项将通过JavaScript动态生成 -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="date" class="block text-sm font-medium text-gray-700 mb-1">出发日期</label>
+                        <input type="date" id="date" name="date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                    </div>
+
+                    <div>
+                        <label for="train-number" class="block text-sm font-medium text-gray-700 mb-1">车次</label>
+                        <input type="text" id="train-number" name="train-number" placeholder="例如：G1234" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                    </div>
+
+                    <div>
+                        <label for="seat-type" class="block text-sm font-medium text-gray-700 mb-1">座位类型</label>
+                        <select id="seat-type" name="seat-type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                            <option value="二等座">二等座</option>
+                            <option value="一等座">一等座</option>
+                            <option value="商务座">商务座</option>
+                            <option value="软卧">软卧</option>
+                            <option value="硬卧">硬卧</option>
+                            <option value="硬座">硬座</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="seat-number" class="block text-sm font-medium text-gray-700 mb-1">座位号</label>
+                        <input type="text" id="seat-number" name="seat-number" placeholder="例如：12车05F号" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                    </div>
+
+                    <div>
+                        <label for="price" class="block text-sm font-medium text-gray-700 mb-1">票价</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                                ¥
+                            </span>
+                            <input type="number" id="price" name="price" min="0" step="0.01" placeholder="0.00" class="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4">
+                    <button type="reset" class="btn-outline">
+                        <i class="fa fa-refresh mr-1"></i> 重置
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fa fa-plus mr-1"></i> 添加车票
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white py-6">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2025 江浙沪地区车站路线图系统</p>
+        </div>
+    </footer>
+
+    <script>
+        // 确保DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 江浙沪地区车站数据 - 用于填充下拉菜单
+            const stations = [
+                { id: 'NJ', name: '南京', city: '江苏', level: '特等站' },
+                { id: 'ZJ', name: '镇江', city: '江苏', level: '一等站' },
+                { id: 'CZ', name: '常州', city: '江苏', level: '一等站' },
+                { id: 'WX', name: '无锡', city: '江苏', level: '一等站' },
+                { id: 'SZ', name: '苏州', city: '江苏', level: '一等站' },
+                { id: 'KS', name: '昆山', city: '江苏', level: '一等站' },
+                { id: 'SHH', name: '上海虹桥', city: '上海', level: '特等站' },
+                { id: 'SH', name: '上海', city: '上海', level: '特等站' },
+                { id: 'QJ', name: '嘉兴', city: '浙江', level: '一等站' },
+                { id: 'JS', name: '嘉善', city: '浙江', level: '二等站' },
+                { id: 'HZ', name: '杭州', city: '浙江', level: '特等站' },
+                { id: 'NJB', name: '南京南', city: '江苏', level: '特等站' },
+                { id: 'HZ2', name: '湖州', city: '浙江', level: '二等站' },
+                { id: 'SX', name: '绍兴', city: '浙江', level: '一等站' },
+                { id: 'NX', name: '宁波', city: '浙江', level: '一等站' },
+                { id: 'JHS', name: '金华', city: '浙江', level: '一等站' },
+                { id: 'YZ', name: '扬州', city: '江苏', level: '一等站' },
+                { id: 'TA', name: '泰州', city: '江苏', level: '二等站' },
+                { id: 'NT', name: '南通', city: '江苏', level: '一等站' },
+                { id: 'SHN', name: '上海南', city: '上海', level: '一等站' },
+                { id: 'TQ', name: '太仓', city: '江苏', level: '二等站' },
+                { id: 'ZJ2', name: '张家港', city: '江苏', level: '二等站' },
+                { id: 'YX', name: '宜兴', city: '江苏', level: '二等站' },
+                { id: 'TY', name: '台州', city: '浙江', level: '一等站' }
+            ];
+
+            // 获取DOM元素
+            const ticketList = document.getElementById('ticket-list');
+            const noTickets = document.getElementById('no-tickets');
+            const addTicketForm = document.getElementById('add-ticket-form');
+            const departureSelect = document.getElementById('departure');
+            const destinationSelect = document.getElementById('destination');
+            const totalTicketsEl = document.getElementById('total-tickets');
+            const totalExpenseEl = document.getElementById('total-expense');
+            const mostFrequentRouteEl = document.getElementById('most-frequent-route');
+
+            // 从localStorage加载车票数据
+            let tickets = [];
+            try {
+                const savedTickets = localStorage.getItem('tickets');
+                if (savedTickets) tickets = JSON.parse(savedTickets);
+                // 修复：清除无效的车票数据
+                tickets = tickets.filter(ticket =>
+                    ticket.id && ticket.departure && ticket.destination
+                );
+                localStorage.setItem('tickets', JSON.stringify(tickets));
+            } catch (e) {
+                console.error('加载车票数据失败:', e);
+                // 重置车票数据
+                tickets = [];
+                localStorage.setItem('tickets', JSON.stringify(tickets));
+            }
+
+            // 更新统计信息
+            function updateStats() {
+                // 总车票数
+                totalTicketsEl.textContent = tickets.length;
+
+                // 总消费
+                const totalExpense = tickets.reduce((sum, ticket) => sum + parseFloat(ticket.price), 0);
+                totalExpenseEl.textContent = `¥${totalExpense.toFixed(2)}`;
+
+                // 最常乘坐路线
+                const routeCounts = {};
+                tickets.forEach(ticket => {
+                    const route = `${ticket.departure}-${ticket.destination}`;
+                    routeCounts[route] = (routeCounts[route] || 0) + 1;
+                });
+
+                let mostFrequentRoute = '暂无数据';
+                let maxCount = 0;
+
+                for (const route in routeCounts) {
+                    if (routeCounts[route] > maxCount) {
+                        maxCount = routeCounts[route];
+                        mostFrequentRoute = route.replace('-', ' → ');
+                    }
+                }
+
+                mostFrequentRouteEl.textContent = maxCount > 1 ? mostFrequentRoute : '暂无数据';
+            }
+
+            // 填充车站下拉菜单
+            function populateStationSelects() {
+                // 清空现有选项
+                departureSelect.innerHTML = '';
+                destinationSelect.innerHTML = '';
+
+                // 添加车站选项
+                stations.forEach(station => {
+                    const option = document.createElement('option');
+                    option.value = station.name;
+                    option.textContent = `${station.name} (${station.city})`;
+
+                    // 克隆选项用于另一个下拉菜单
+                    const optionClone = option.cloneNode(true);
+
+                    departureSelect.appendChild(option);
+                    destinationSelect.appendChild(optionClone);
+                });
+            }
+
+            // 渲染车票列表
+            function renderTickets() {
+                // 清空现有车票
+                ticketList.innerHTML = '';
+
+                // 检查是否有车票
+                if (tickets.length === 0) {
+                    noTickets.classList.remove('hidden');
+                    return;
+                }
+
+                // 隐藏无车票提示
+                noTickets.classList.add('hidden');
+
+                // 渲染每张车票
+                tickets.forEach(ticket => {
+                    const ticketCard = document.createElement('div');
+                    ticketCard.className = 'ticket-card bg-white rounded-xl shadow-md overflow-hidden border border-gray-100';
+
+                    // 座位类型样式
+                    let seatTypeClass = '';
+                    switch(ticket.seatType) {
+                        case '商务座':
+                            seatTypeClass = 'bg-yellow-100 text-yellow-800';
+                            break;
+                        case '一等座':
+                            seatTypeClass = 'bg-blue-100 text-blue-800';
+                            break;
+                        case '二等座':
+                            seatTypeClass = 'bg-gray-100 text-gray-800';
+                            break;
+                        case '软卧':
+                            seatTypeClass = 'bg-purple-100 text-purple-800';
+                            break;
+                        case '硬卧':
+                            seatTypeClass = 'bg-green-100 text-green-800';
+                            break;
+                        case '硬座':
+                            seatTypeClass = 'bg-red-100 text-red-800';
+                            break;
+                        default:
+                            seatTypeClass = 'bg-gray-100 text-gray-800';
+                    }
+
+                    ticketCard.innerHTML = `
+                        <div class="p-5">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">${ticket.trainNumber}</h3>
+                                    <span class="seat-type ${seatTypeClass}">${ticket.seatType}</span>
+                                </div>
+                                <div class="text-gray-500 text-sm">
+                                    <span class="flex items-center">
+                                        <i class="fa fa-calendar-o mr-1"></i> ${ticket.date}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="relative flex justify-between items-center mb-4">
+                                <div>
+                                    <div class="text-2xl font-bold text-gray-900">${ticket.departure}</div>
+                                    <div class="text-sm text-gray-500">${getStationCity(ticket.departure)}</div>
+                                </div>
+
+                                <div class="flex flex-col items-center">
+                                    <div class="w-24 h-px bg-gray-300"></div>
+                                    <div class="text-xs text-gray-500 mt-1">约2小时</div>
+                                </div>
+
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-gray-900">${ticket.destination}</div>
+                                    <div class="text-sm text-gray-500">${getStationCity(ticket.destination)}</div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between text-sm text-gray-600">
+                                <div>
+                                    <span class="font-medium">座位:</span> ${ticket.seatNumber}
+                                </div>
+                                <div>
+                                    <span class="font-medium">票价:</span> ¥${ticket.price}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-100 px-5 py-3 bg-gray-50 flex justify-between items-center">
+                            <button class="view-ticket text-primary hover:text-primary/80 transition-colors text-sm font-medium flex items-center" data-id="${ticket.id}">
+                                <i class="fa fa-map-marker mr-1"></i> 查看路线
+                            </button>
+                            <button class="delete-ticket text-red-500 hover:text-red-700 transition-colors text-sm font-medium flex items-center" data-id="${ticket.id}">
+                                <i class="fa fa-trash-o mr-1"></i> 删除
+                            </button>
+                        </div>
+                    `;
+
+                    ticketList.appendChild(ticketCard);
+                });
+
+                // 添加事件监听器（使用箭头函数绑定正确的this）
+                document.querySelectorAll('.view-ticket').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const ticketId = e.currentTarget.getAttribute('data-id');
+                        viewTicket(ticketId);
+                    });
+                });
+
+                document.querySelectorAll('.delete-ticket').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const ticketId = e.currentTarget.getAttribute('data-id');
+                        deleteTicket(ticketId);
+                    });
+                });
+            }
+
+            // 获取车站所在城市
+            function getStationCity(stationName) {
+                const station = stations.find(s => s.name === stationName);
+                return station ? station.city : '';
+            }
+
+            // 查看车票路线
+            function viewTicket(ticketId) {
+                // 修复：跳转到正确的地图页面，添加错误处理
+                try {
+                    const ticket = tickets.find(t => t.id === ticketId);
+                    if (!ticket) {
+                        alert('未找到该车票信息');
+                        return;
+                    }
+
+                    // 使用相对路径确保跳转正确
+                    window.location.href = `station_map.html?highlight=${ticketId}`;
+                } catch (error) {
+                    console.error('地图跳转失败:', error);
+                    alert('无法加载地图页面，请稍后再试');
+                }
+            }
+
+            // 删除车票
+            function deleteTicket(ticketId) {
+                if (confirm('确定要删除这张车票吗？')) {
+                    // 过滤掉要删除的车票
+                    tickets = tickets.filter(ticket => ticket.id !== ticketId);
+
+                    // 保存到localStorage
+                    localStorage.setItem('tickets', JSON.stringify(tickets));
+
+                    // 更新统计信息
+                    updateStats();
+
+                    // 重新渲染车票列表
+                    renderTickets();
+
+                    // 显示删除成功消息
+                    alert('车票已成功删除！');
+                }
+            }
+
+            // 添加新车票
+            function addTicket(event) {
+                event.preventDefault();
+
+                // 获取表单值
+                const departure = departureSelect.value;
+                const destination = destinationSelect.value;
+                const date = document.getElementById('date').value;
+                const trainNumber = document.getElementById('train-number').value;
+                const seatType = document.getElementById('seat-type').value;
+                const seatNumber = document.getElementById('seat-number').value;
+                const price = document.getElementById('price').value;
+
+                // 验证表单
+                if (!departure || !destination || !date || !trainNumber || !seatNumber || !price) {
+                    alert('请填写所有必填字段');
+                    return;
+                }
+
+                if (departure === destination) {
+                    alert('出发站和到达站不能相同');
+                    return;
+                }
+
+                // 创建新车票对象
+                const newTicket = {
+                    id: Date.now().toString(), // 使用时间戳作为唯一ID
+                    departure,
+                    destination,
+                    date,
+                    trainNumber,
+                    seatType,
+                    seatNumber,
+                    price
+                };
+
+                // 添加到车票数组
+                tickets.push(newTicket);
+
+                // 保存到localStorage
+                localStorage.setItem('tickets', JSON.stringify(tickets));
+
+                // 更新统计信息
+                updateStats();
+
+                // 重置表单
+                addTicketForm.reset();
+
+                // 重新渲染车票列表
+                renderTickets();
+
+                // 显示成功消息
+                alert('车票添加成功！');
+            }
+
+            // 添加事件监听器
+            addTicketForm.addEventListener('submit', addTicket);
+
+            // 初始化
+            populateStationSelects();
+            updateStats();
+            renderTickets();
+        });
+    </script>
+</body>
+</html>
