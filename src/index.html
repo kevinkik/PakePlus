@@ -1,32 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="stylesheet" href="styles.css" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus App</title>
-        <script type="module" src="/main.js" defer></script>
-    </head>
-
-    <body>
-        <main class="container">
-            <h1>Welcome to PakePlus</h1>
-            <form class="row" id="greet-form">
-                <input id="inputValue" placeholder="Enter a something..." />
-            </form>
-            <div class="resultBox">
-                <span>result: </span>
-                <span id="result"></span>
-            </div>
-            <div class="invokeBox">
-                <button id="openUrl">open_url_browser</button>
-                <button id="openUrlNew">open_url_new</button>
-                <button id="runCommand">run_command</button>
-                <button id="downloadFile">download_file</button>
-                <button id="getExeDir">get_exe_dir</button>
-                <button id="getEnvVar">get_env_var</button>
-                <button id="findPort">find_port</button>
-            </div>
-        </main>
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>江浙沪地区车站路线图 - 开始使用</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#f59e0b',
+                        neutral: '#6b7280',
+                        'ticket-line': '#ef4444',
+                        'line-1': '#3b82f6', // 沪宁线 - 蓝色
+                        'line-2': '#ef4444', // 沪杭线 - 红色
+                        'line-3': '#10b981', // 宁杭线 - 绿色
+                        'line-4': '#f59e0b', // 沿海线 - 橙色
+                        'line-5': '#8b5cf6', // 沪昆线 - 紫色
+                        'line-6': '#ec4899', // 宁启线 - 粉色
+                        'line-7': '#6366f1', // 通苏嘉线 - 靛蓝色
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .btn {
+                @apply bg-primary text-white px-4 py-2 rounded-lg font-medium transition-all hover:bg-primary/90;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col justify-center items-center">
+    <div class="bg-white rounded-xl shadow-lg p-12 text-center">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">欢迎使用江浙沪地区车站路线图系统</h1>
+        <p class="text-gray-600 mb-8">通过此系统，你可以查看江浙沪地区的铁路线路图并管理你的车票信息。</p>
+        <div class="flex flex-col space-y-4">
+            <a href="station_map.html" class="btn">查看地图</a>
+            <a href="ticket_manager.html" class="btn">管理车票</a>
+        </div>
+    </div>
+    <footer class="bg-gray-800 text-white py-6 w-full text-center mt-auto">
+        <p>© 2025 江浙沪地区车站路线图系统</p>
+    </footer>
+</body>
 </html>
